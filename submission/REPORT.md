@@ -8,7 +8,7 @@
 - **MSSV:** 2A202602400
 - **Lớp:** K4-L3A
 - **Repository URL:** https://github.com/htai2329102003-web/K4-L3-DAY13-HoangVanTai-2A202602400-Monitoring-LLMOps
-- **Commit SHA cuối:** 13b606680ae4a3072eda90334959b632fe4ecba0
+- **Commit SHA cuối:** 3578e070a7c3aea4ca92c93c3d89bff954f35c23
 - **Challenge ID:** `day13-k4-l3a-monitoring-llmops-v1`
 - **Tên project Langfuse cá nhân:** `day13-k4-l3a-2A202602400`
 
