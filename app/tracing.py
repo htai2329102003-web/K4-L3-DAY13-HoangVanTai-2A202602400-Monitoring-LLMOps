@@ -11,6 +11,10 @@ try:
 except ImportError:  # pragma: no cover - chỉ dùng khi chưa cài requirements
     LANGFUSE_SDK_AVAILABLE = False
 
+    class _DummyObservation:
+        def update(self, **kwargs: Any) -> None:
+            return None
+
     def observe(*args: Any, **kwargs: Any):
         def decorator(func):
             return func
@@ -23,6 +27,10 @@ except ImportError:  # pragma: no cover - chỉ dùng khi chưa cài requirement
 
         def update_current_generation(self, **kwargs: Any) -> None:
             return None
+
+        @contextmanager
+        def start_as_current_observation(self, **kwargs: Any):
+            yield _DummyObservation()
 
     def get_client():
         return _DummyClient()

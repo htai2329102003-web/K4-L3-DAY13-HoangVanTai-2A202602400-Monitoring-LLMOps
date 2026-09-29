@@ -51,7 +51,19 @@ class LabAgent:
             },
         ):
             started = time.perf_counter()
-            docs = retrieve(message)
+            with langfuse_client.start_as_current_observation(
+                as_type="retriever",
+                name="retrieval",
+                input={"query": summarize_text(message)},
+            ) as retrieval_observation:
+                docs = retrieve(message)
+                retrieval_observation.update(
+                    output={
+                        "document_count": len(docs),
+                        "documents": [summarize_text(doc, max_len=300) for doc in docs],
+                    }
+                )
+
             prompt = resolve_prompt(
                 langfuse_client,
                 feature=feature,
@@ -71,10 +83,36 @@ class LabAgent:
                 },
                 version=prompt.version,
             )
-            # TODO (CP2): instrument retrieve() and FakeLLM.generate() as child
-            # observations. The nested generation must receive prompt, usage and cost.
             with propagate_attributes(prompt=prompt.managed_prompt):
-                response = self.llm.generate(prompt.text)
+                with langfuse_client.start_as_current_observation(
+                    as_type="generation",
+                    name="llm-generation",
+                    model=self.model,
+                    version=prompt.version,
+                    prompt=prompt.managed_prompt,
+                    input={"prompt_preview": summarize_text(prompt.text, max_len=500)},
+                    metadata={
+                        "prompt_name": prompt.name,
+                        "prompt_label": prompt.label,
+                        "prompt_version": prompt.version,
+                        "prompt_source": prompt.source,
+                        "correlation_id": correlation_id,
+                    },
+                ) as generation_observation:
+                    response = self.llm.generate(prompt.text)
+                    input_tokens = response.usage.input_tokens
+                    output_tokens = response.usage.output_tokens
+                    generation_observation.update(
+                        output=summarize_text(response.text, max_len=500),
+                        usage_details={
+                            "input": input_tokens,
+                            "output": output_tokens,
+                        },
+                        cost_details={
+                            "input": input_tokens * 3 / 1_000_000,
+                            "output": output_tokens * 15 / 1_000_000,
+                        },
+                    )
             quality_score = self._heuristic_quality(message, response.text, docs)
             latency_ms = int((time.perf_counter() - started) * 1000)
             cost_usd = self._estimate_cost(response.usage.input_tokens, response.usage.output_tokens)
